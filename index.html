@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Breakout — 3D Kart Time Trial</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body { width: 100%; height: 100%; overflow: hidden; background: #0b0e13; }
+      body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #f4f6f8; }
+      #game { position: fixed; inset: 0; }
+      #game canvas { display: block; }
+      .hud { position: fixed; z-index: 5; pointer-events: none; user-select: none; }
+      .hud-tl { top: 14px; left: 16px; background: rgba(10, 14, 20, 0.55); border: 1px solid rgba(255,255,255,0.14); border-radius: 12px; padding: 10px 14px; backdrop-filter: blur(6px); }
+      .hud-tl .label { font-size: 10px; letter-spacing: 0.18em; color: #9fb3c8; }
+      #hud-time { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.05; }
+      #hud-lap { font-size: 13px; font-weight: 700; letter-spacing: 0.12em; color: #ffd34d; margin-top: 4px; }
+      .hud-tr { top: 14px; right: 16px; text-align: right; background: rgba(10, 14, 20, 0.55); border: 1px solid rgba(255,255,255,0.14); border-radius: 12px; padding: 10px 14px; backdrop-filter: blur(6px); font-variant-numeric: tabular-nums; }
+      .hud-tr .row { font-size: 12px; letter-spacing: 0.08em; color: #cfd9e4; margin: 3px 0; }
+      .hud-tr .row b { color: #ffffff; font-weight: 700; }
+      .hud-br { bottom: 16px; right: 16px; text-align: right; background: rgba(10, 14, 20, 0.55); border: 1px solid rgba(255,255,255,0.14); border-radius: 12px; padding: 10px 14px; backdrop-filter: blur(6px); }
+      #hud-speed { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
+      .hud-br .label { font-size: 10px; letter-spacing: 0.18em; color: #9fb3c8; }
+      .hud-bl { bottom: 16px; left: 16px; font-size: 12px; letter-spacing: 0.06em; color: #aebccf; background: rgba(10, 14, 20, 0.45); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 8px 12px; backdrop-filter: blur(6px); line-height: 1.5; }
+      .hud-bl b { color: #fff; }
+      #hud-msg { position: fixed; top: 22%; left: 50%; transform: translateX(-50%); z-index: 6; font-size: 52px; font-weight: 900; letter-spacing: 0.04em; text-shadow: 0 4px 22px rgba(0,0,0,0.65); opacity: 0; transition: opacity 0.14s ease-out; pointer-events: none; white-space: nowrap; }
+      #hud-msg.info { color: #ffffff; }
+      #hud-msg.lap { color: #ffd34d; }
+      #hud-msg.best { color: #59f2a0; }
+      #hud-msg.countdown { color: #ffffff; }
+      #hud-note { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); z-index: 6; font-size: 15px; font-weight: 800; letter-spacing: 0.28em; color: #ff8a6a; text-shadow: 0 2px 14px rgba(0,0,0,0.7); opacity: 0; transition: opacity 0.2s ease-out; pointer-events: none; }
+      @media (max-width: 640px) {
+        #hud-msg { font-size: 34px; }
+        #hud-time { font-size: 22px; }
+        .hud-bl { display: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game"></div>
+    <div class="hud hud-tl">
+      <div class="label">CURRENT LAP</div>
+      <div id="hud-time">0:00.00</div>
+      <div id="hud-lap">LAP 1</div>
+    </div>
+    <div class="hud hud-tr">
+      <div class="row"><b id="hud-best">BEST --:--.--</b></div>
+      <div class="row"><b id="hud-last">LAST --:--.--</b></div>
+    </div>
+    <div class="hud hud-br">
+      <div class="label">SPEED</div>
+      <div id="hud-speed">0 km/h</div>
+    </div>
+    <div class="hud hud-bl">
+      <b>W / ↑</b> throttle &nbsp; <b>S / ↓</b> brake &nbsp; <b>A D / ← →</b> steer<br />
+      <b>Space</b> handbrake &nbsp; <b>R</b> reset
+    </div>
+    <div id="hud-msg" class="hud info"></div>
+    <div id="hud-note" class="hud"></div>
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>
