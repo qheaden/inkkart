@@ -42,6 +42,51 @@ weightier. The engine ramps the player's steer through this and feeds the
 *smoothed* value into the physics step, so holding a key produces a smooth turn
 instead of an instant jerk.
 
+## Touch controls (mobile)
+
+On touch-capable, coarse-pointer devices (phones and tablets in portrait or
+landscape) the engine attaches on-screen controls instead of relying on the
+keyboard. Desktops keep the keyboard layout — even desktops with a
+touchscreen (fine primary pointer) — and both sources can drive the kart at
+the same time.
+
+**Source:** `src/game/touch.ts` (detection, key union, multi-touch tracker, DOM wiring)
+**Tests:** `tests/touch.test.ts`
+
+### Device detection (`shouldShowTouchControls`)
+
+Pure and unit-tested: shown only when `maxTouchPoints > 0 && coarsePointer`.
+`detectTouchDevice()` reads `navigator.maxTouchPoints` and
+`matchMedia('(pointer: coarse)')` in the browser.
+
+### Layout
+
+- bottom-left: steer ◀ / ▶ (hold)
+- bottom-right: RESET (tap), HANDBRAKE (hold), BRAKE ▼ / GAS ▲
+- The `#touch-controls` container is hidden by default; the engine adds
+  `body.touch-mode` to reveal it. Touch buttons never intercept the
+  renderer (pointer-events: none on the container, auto on the buttons).
+
+### Wiring (`attachTouchControls`)
+
+- One `pointerdown` handler on the container (event delegation): a
+  `[data-button]` press records `pointerId → button` in a tracker; pointer
+  capture keeps the events flowing even if the finger drifts off the button.
+- The tracker keeps a button held until **every** touch holding it is
+  released, so two fingers can hold GAS independently of steering.
+- `pointerup` / `pointercancel` / `lostpointercapture` release the button;
+  window blur and tab-hidden release all buttons so nothing gets stuck.
+- A `[data-reset]` tap fires the engine's `reset()`.
+- The first interaction unlocks audio, same as a keypress.
+- Buttons toggle an `is-pressed` class for the green-tinged pressed look;
+  `is-pressed.is-brake/throttle` stay their own hue.
+
+### Key merge (`unionKeys`)
+
+Keyboard and touch write separate `KartKeys` objects. The effective input is
+their OR-merge, then it goes through the same `mapKeysToInput` →
+`smoothSteer` path as before — the keyboard path is unchanged.
+
 ## Notes
 
 - The same smoothed steer is used for the visual steer wheels (front steer

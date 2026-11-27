@@ -33,6 +33,16 @@ from `index.html`. All state lives in the engine; the HUD only displays it.
 - `hud.getText()` — returns the current text contents of all HUD fields, used
   by browser-test debug hooks.
 
+## Touch layout
+
+When the engine adds `body.touch-mode` (mobile devices), the HUD re-layouts
+around the on-screen controls:
+
+- `.hud-bl` (keyboard hints) is hidden.
+- `.hud-br` (speed) and `.hud-tr` (best/last) stack at the top-right, under
+  each other, so the pedals don't cover the speed readout.
+- `#hud-note` (OFF TRACK / GET READY) moves up, off the bottom edge.
+
 ## Notes
 
 - Speed display is derived by the engine (`forwardSpeed × 2.6`), not the HUD.

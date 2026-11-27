@@ -7,6 +7,7 @@ import { generateScenery, DEFAULT_SCENERY, type SceneryItem } from './scenery';
 import { buildSky, buildGround, buildLights, buildTrackMeshes, buildSceneryGroup, buildSunGlow } from './world';
 import { buildKart, updateVisual, type KartParts } from './kart';
 import { attachInput, defaultKeys, mapKeysToInput, smoothSteer, type KartKeys } from './input';
+import { attachTouchControls, detectTouchDevice, shouldShowTouchControls, unionKeys } from './touch';
 import { Hud, type HudSnapshot } from './hud';
 import {
   DEFAULT_OPPONENTS,
@@ -71,9 +72,12 @@ export class GameEngine {
   private sound = new SoundEngine();
   private hud?: Hud;
   private keys: KartKeys = defaultKeys();
+  /** on-screen touch input, merged into the effective input (mobile only) */
+  private touchKeys: KartKeys = defaultKeys();
   /** smoothed steering applied to the player's physics (ramped toward the target) */
   private steerSmooth = 0;
   private detachInput: (() => void) | null = null;
+  private detachTouch: (() => void) | null = null;
   private sceneryItems: SceneryItem[] = [];
   private trackGroup?: THREE.Group;
 
@@ -147,6 +151,11 @@ export class GameEngine {
     this.detachInput = attachInput(this.keys, () => this.unlockAudio());
     window.addEventListener('keydown', this.unlockAudioBound, { once: true });
 
+    // On mobile devices the keyboard is not always present — offer on-screen
+    // touch controls. Desktops keep the keyboard layout.
+    const touchInfo = detectTouchDevice();
+    if (shouldShowTouchControls(touchInfo)) this.enableTouchControls();
+
     this.status = 'countdown';
     this.countdown = COUNTDOWN_DURATION;
     this.placeCameraImmediate();
@@ -167,6 +176,30 @@ export class GameEngine {
 
     this.onResizeBound = () => this.onResize();
     window.addEventListener('resize', this.onResizeBound);
+  }
+
+  /** Keyboard and touch inputs combined into one effective key state. */
+  private effectiveKeys(): KartKeys {
+    return unionKeys(this.keys, this.touchKeys);
+  }
+
+  private enableTouchControls(): boolean {
+    const touchRoot = document.getElementById('touch-controls');
+    if (!touchRoot || this.detachTouch) return Boolean(this.detachTouch);
+    document.body.classList.add('touch-mode');
+    this.detachTouch = attachTouchControls({
+      root: touchRoot,
+      keys: this.touchKeys,
+      onAnyKey: () => this.unlockAudio(),
+      onReset: () => this.reset(),
+    });
+    return true;
+  }
+
+  private disableTouchControls(): void {
+    this.detachTouch?.();
+    this.detachTouch = null;
+    document.body.classList.remove('touch-mode');
   }
 
   private unlockAudioBound = () => this.unlockAudio();
@@ -265,6 +298,7 @@ export class GameEngine {
     const rx = Math.cos(this.kart.heading);
     const rz = -Math.sin(this.kart.heading);
     const slip = Math.abs(this.kart.vx * rx + this.kart.vz * rz);
+    const effective = this.effectiveKeys();
     return {
       status: this.status,
       countdown: Math.max(0, this.countdown - GO_THRESHOLD),
@@ -285,8 +319,8 @@ export class GameEngine {
       message: this.message,
       messageKind: this.messageKind,
       steering: this.steerSmooth,
-      throttle: this.keys.throttle ? 1 : this.keys.brake ? -1 : 0,
-      handbrake: this.keys.handbrake,
+      throttle: effective.throttle ? 1 : effective.brake ? -1 : 0,
+      handbrake: effective.handbrake,
       drawCalls: this.renderer.info.render.calls,
       triangles: this.renderer.info.render.triangles,
     };
@@ -338,6 +372,7 @@ export class GameEngine {
     this.running = false;
     cancelAnimationFrame(this.rafId);
     this.detachInput?.();
+    this.disableTouchControls();
     window.removeEventListener('resize', this.onResizeBound);
     this.renderer.dispose();
     this.container.removeChild(this.renderer.domElement);
@@ -370,7 +405,7 @@ export class GameEngine {
         this.sound.playCountdown(3);
       }
       // ramp the steering toward the held keys so the kart starts clean
-      this.steerSmooth = smoothSteer(this.steerSmooth, mapKeysToInput(this.keys).steer, dt);
+      this.steerSmooth = smoothSteer(this.steerSmooth, mapKeysToInput(this.effectiveKeys()).steer, dt);
       this.updateCamera(dt);
       this.updateKartVisual(0, this.steerSmooth, 0);
       this.updateOpponentVisuals(0);
@@ -381,7 +416,7 @@ export class GameEngine {
 
     this.raceTime += dt;
 
-    const input = mapKeysToInput(this.keys);
+    const input = mapKeysToInput(this.effectiveKeys());
     this.steerSmooth = smoothSteer(this.steerSmooth, input.steer, dt);
     stepKart(this.kart, { throttle: input.throttle, steer: this.steerSmooth, handbrake: input.handbrake }, this.track, dt, DEFAULT_PHYSICS);
 
@@ -421,7 +456,7 @@ export class GameEngine {
 
     this.updateKartVisual(Math.abs(fwd), this.steerSmooth, input.throttle);
     this.updateOpponentVisuals(dt);
-    this.sound.update(Math.min(1, Math.abs(fwd) / DEFAULT_PHYSICS.maxForwardSpeed), lat, this.keys.handbrake, onTrack, true);
+    this.sound.update(Math.min(1, Math.abs(fwd) / DEFAULT_PHYSICS.maxForwardSpeed), lat, this.effectiveKeys().handbrake, onTrack, true);
 
     if (this.messageTimer > 0) {
       this.messageTimer -= dt;

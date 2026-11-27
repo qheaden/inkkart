@@ -2,11 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>InkKart — 3D Kart Time Trial</title>
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
-      html, body { width: 100%; height: 100%; overflow: hidden; background: #0b0e13; }
+      html, body { width: 100%; height: 100%; overflow: hidden; background: #0b0e13; touch-action: none; overscroll-behavior: none; }
       body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #f4f6f8; }
       #game { position: fixed; inset: 0; }
       #game canvas { display: block; }
@@ -28,11 +28,38 @@
       #hud-msg.lap { color: #ffd34d; }
       #hud-msg.best { color: #59f2a0; }
       #hud-msg.countdown { color: #ffffff; }
-      #hud-note { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); z-index: 6; font-size: 15px; font-weight: 800; letter-spacing: 0.28em; color: #ff8a6a; text-shadow: 0 2px 14px rgba(0,0,0,0.7); opacity: 0; transition: opacity 0.2s ease-out; pointer-events: none; }
+      #hud-note { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); z-index: 6; font-size: 15px; font-weight: 800; letter-spacing: 0.28em; color: #ff8a6a; text-shadow: 0 2px 14px rgba(0,0,0,0.7); opacity: 0; transition: opacity 0.2s ease-out; pointer-events: none; white-space: nowrap; }
+
+      /* --- Touch controls (mobile only; the engine adds .touch-mode) --- */
+      :root { --tc-size: clamp(74px, 20vmin, 106px); }
+      #touch-controls { display: none; position: fixed; inset: 0; z-index: 8; pointer-events: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+      body.touch-mode #touch-controls { display: block; }
+      .tc-cluster { position: absolute; display: flex; gap: 14px; align-items: flex-end; }
+      .tc-cluster.tc-left { left: 16px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
+      .tc-cluster.tc-right { right: 16px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); flex-direction: column; align-items: flex-end; gap: 10px; }
+      .tc-pedals { display: flex; gap: 12px; align-items: flex-end; }
+      .tc-btn { pointer-events: auto; touch-action: none; -webkit-tap-highlight-color: transparent; width: var(--tc-size); height: var(--tc-size); border-radius: 24px; border: 1px solid rgba(255,255,255,0.28); background: rgba(10, 14, 20, 0.58); backdrop-filter: blur(6px); color: #f4f6f8; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font: 800 12px/1 system-ui, sans-serif; letter-spacing: 0.14em; cursor: pointer; }
+      .tc-btn .tc-arrow { font-size: clamp(22px, 7vmin, 30px); line-height: 1; }
+      .tc-btn.is-pressed { transform: scale(0.93); background: rgba(89, 242, 160, 0.34); border-color: rgba(89, 242, 160, 0.75); }
+      .tc-btn.tc-throttle { background: rgba(30, 120, 52, 0.58); border-color: rgba(110, 235, 150, 0.5); }
+      .tc-btn.tc-throttle.is-pressed { background: rgba(50, 190, 85, 0.68); border-color: rgba(140, 255, 170, 0.85); }
+      .tc-btn.tc-brake { background: rgba(140, 40, 36, 0.58); border-color: rgba(255, 150, 120, 0.5); }
+      .tc-btn.tc-brake.is-pressed { background: rgba(215, 65, 55, 0.72); border-color: rgba(255, 175, 150, 0.85); }
+      .tc-pill { pointer-events: auto; touch-action: none; -webkit-tap-highlight-color: transparent; height: 42px; padding: 0 18px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.25); background: rgba(10, 14, 20, 0.55); backdrop-filter: blur(6px); color: #dfe8f2; font: 800 11px/1 system-ui, sans-serif; letter-spacing: 0.2em; cursor: pointer; }
+      .tc-pill.is-pressed { transform: scale(0.94); background: rgba(89, 242, 160, 0.3); border-color: rgba(89, 242, 160, 0.7); }
+      .tc-reset { height: 32px; padding: 0 13px; font-size: 10px; font-weight: 800; letter-spacing: 0.18em; }
+      /* HUD re-layout on touch devices (keyboard hints replaced by buttons) */
+      body.touch-mode .hud-bl { display: none; }
+      body.touch-mode .hud-br { bottom: auto; top: 14px; right: 16px; }
+      body.touch-mode .hud-tr { top: 96px; }
+      body.touch-mode #hud-note { bottom: calc(var(--tc-size) + 70px + env(safe-area-inset-bottom, 0px)); }
       @media (max-width: 640px) {
         #hud-msg { font-size: 34px; }
         #hud-time { font-size: 22px; }
         .hud-bl { display: none; }
+      }
+      @media (max-width: 640px), (pointer: coarse) {
+        body.touch-mode #hud-msg { font-size: 30px; }
       }
     </style>
   </head>
@@ -57,6 +84,20 @@
     </div>
     <div id="hud-msg" class="hud info"></div>
     <div id="hud-note" class="hud"></div>
+    <div id="touch-controls">
+      <div class="tc-cluster tc-left">
+        <button class="tc-btn tc-steer" data-button="left" type="button" aria-label="Steer left"><span class="tc-arrow">◀</span></button>
+        <button class="tc-btn tc-steer" data-button="right" type="button" aria-label="Steer right"><span class="tc-arrow">▶</span></button>
+      </div>
+      <div class="tc-cluster tc-right">
+        <button class="tc-pill tc-reset" data-reset type="button" aria-label="Reset race">↺ RESET</button>
+        <button class="tc-pill" data-button="handbrake" type="button" aria-label="Handbrake (hold)">HANDBRAKE</button>
+        <div class="tc-pedals">
+          <button class="tc-btn tc-brake" data-button="brake" type="button" aria-label="Brake"><span class="tc-arrow">▼</span><span class="tc-label">BRAKE</span></button>
+          <button class="tc-btn tc-throttle" data-button="throttle" type="button" aria-label="Throttle"><span class="tc-arrow">▲</span><span class="tc-label">GAS</span></button>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/main.js"></script>
   </body>
 </html>

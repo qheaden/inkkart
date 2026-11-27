@@ -22,6 +22,11 @@ bun run start   # build + serve on http://localhost:3000/
 | `Space` | handbrake — cuts the engine and reduces grip |
 | `R` | reset the player and all opponents to the grid |
 
+**On mobile (touch) devices** the keyboard is not required: on-screen controls
+appear automatically — steer ◀ ▶ (bottom-left), GAS ▲ / BRAKE ▼ (bottom-right),
+plus HANDBRAKE (hold) and a ↺ RESET tap below them. Keyboard and touch inputs
+can both drive the kart at the same time. See `docs/input.md`.
+
 The kart is deliberately **less grippy at near-max speed** (roughly 44–58 u/s):
 turn hard while flat out and the back end slides, and you need to slow down to
 regain traction. The computer players keep full grip and a higher top speed, so
@@ -57,6 +62,8 @@ src/
     rng.ts           seeded mulberry32 PRNG (deterministic scenery)
     scenery.ts       seeded, track-aware tree/pine/rock/bush/mountain/cloud/lake placement
     input.ts         keyboard → throttle/steer/handbrake + exponential steer smoothing
+    touch.ts         mobile on-screen controls: device detection, key union,
+                     multi-touch tracker, pointer-event wiring
     autopilot.ts     pure centerline-following steering (used in tests)
     opponents.ts     nine computer players: three-line grid, distinct lines/colors,
                      speed-proportional braking, chase avoidance, OBB collisions (SAT)
@@ -67,7 +74,7 @@ src/
     audio.ts         Web Audio engine: engine tones, drift gain by slip, countdown beeps,
                      lap jingle
     hud.ts           HUD driver (lap time, best/last, speed, messages)
-tests/               bun:test — unit, integration and opponent coverage (90 tests)
+tests/               bun:test — unit, integration and opponent coverage (109 tests)
 ```
 
 Design highlights:
@@ -90,7 +97,7 @@ Design highlights:
 bun test
 ```
 
-90 tests across 8 files: track/physics/timer/scenery/audio/input units, the
+109 tests across 9 files: track/physics/timer/scenery/audio/input/touch units, the
 high-speed grip fade (pure curve + faded vs full-grip sliding behavior), opponent
 spawning/lines/avoidance/chase/OBB, lap integration for all nine karts, and a
 full-lap autopilot smoke test through the real physics.

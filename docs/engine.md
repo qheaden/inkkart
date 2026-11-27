@@ -23,7 +23,7 @@ The engine constructs and owns:
 - `THREE.Scene` with fog (210–780), background color, sky dome, hemisphere +
   directional sun light, ground circle, track ribbon group, scenery group, sun glow sprite
 - Player kart mesh (red `0xe0393e`) + nine AI kart meshes (distinct colors)
-- `RaceTimer`, `SoundEngine`, `Hud` (if `#hud-time` exists), `KartKeys`
+- `RaceTimer`, `SoundEngine`, `Hud` (if `#hud-time` exists), `KartKeys` (keyboard) and a separate `KartKeys` for on-screen touch input (merged via `unionKeys`)
 
 ## Lifecycle
 
@@ -39,8 +39,8 @@ The engine constructs and owns:
      opponent-vs-opponent pairs (OBB); updates the timer (lap events → message
      + lap jingle); computes visual speed, slip-based camera shake and
      audio/HUD/camera/render.
-3. `destroy()` — stops the loop, detaches input/listeners, disposes the
-   renderer and removes the global debug hook.
+3. `destroy()` — stops the loop, detaches input/listeners, removes the
+   `touch-mode` class and the global debug hook.
 4. `reset()` (bound to `R` in `main.ts`) — respawns the kart and all
    opponents, resets the timer and clock, returns to countdown, fades audio
    out and places the camera immediately.
@@ -50,6 +50,18 @@ The engine constructs and owns:
 Third-person chase cam: target 9.2 units behind and 4.4 units up, lerp rate
 `1 - exp(-6.5 × dt)`, look-at 7 units ahead. Shake on the grass (0.32) or on
 hard slip (`max(0, slip - 9) × 0.018`), added as random jitter each frame.
+
+## Touch controls
+
+ On coarse-pointer touch devices (`shouldShowTouchControls` from
+ `src/game/touch.ts`), the engine attaches the on-screen controls
+(`#touch-controls`) and adds `body.touch-mode`. Keyboard and touch write
+separate `KartKeys` objects and the engine reads their OR-merge via
+`effectiveKeys()`, so `mapKeysToInput`/`smoothSteer` and the physics step
+are unchanged. The touch reset pill calls `reset()`; the first touch
+unlocks audio, like the first keypress. `destroy()` detaches them and
+removes `touch-mode`. On desktops the controls never activate and the
+keyboard path is byte-for-byte the same.
 
 ## HUD / messages
 
